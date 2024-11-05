@@ -1,1 +1,13 @@
+There will be multiple models that are built from the DNDF framework. The DNDF framework is as such:
 
+1) Data Input → The data enters the neural network layers, where initial feature transformations and embeddings are created.
+2) Neural Network Embedding → The transformed data is passed to each tree in the forest, creating a refined, lower-dimensional feature embedding.
+3) Tree-Based Decision Making → Each tree routes the data through soft decision nodes, ultimately reaching leaf nodes with probability-weighted class distributions.
+4) Ensemble Prediction → Predictions from each tree are aggregated to produce the final output, representing the probability distribution over possible classes (e.g., low, medium, or high diabetes risk).
+5) End-to-End Training → Joint training via backpropagation ensures that both neural embeddings and tree decisions are optimized together.
+
+Model A is built using tf.keras as the neural network embedding layer and tfdf.keras as the decision tree backbone layer. However, due to the nature of tfdf.kera's model, the NN layer and the decision tree layer are optimised seperately, rather than as a complete unit.
+Ultimately, Model A is not a true DNDF model but only an approximation of one. However, its ease of implementation, computation and interpretability may still result in it outperforming Model B
+
+Model B is built using pytorch as the neural network embedding layer and a custom decision tree class as the backbone. This is because the decision tree model provided by tensorflow (model A) does not have the ability to backpropogate. Model B instead uses probabilistic pathing and trainable leaf nodes, allowing joint optimisation of the embedding layer and the backbone.
+Model B is a true DNDF model, ensuring joint optimisation of both the NN layer and DF layer. However, it is notably more complex, resulting in it being more computationally costly and less interpretable.
