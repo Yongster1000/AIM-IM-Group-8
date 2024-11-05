@@ -1,3 +1,6 @@
+
+#appearently only works on Linux
+
 import tensorflow as tf
 import tensorflow_decision_forests as tfdf
 from sklearn.preprocessing import StandardScaler
@@ -5,11 +8,11 @@ import pandas as pd
 from sklearn.metrics import classification_report
 
 # Load data
-train_data = pd.read_csv("train_standard.csv")
-test_data = pd.read_csv("test_standard.csv")
+train_data = pd.read_csv("Data/train_standard.csv")
+test_data = pd.read_csv("Data/test_standard.csv")
 
 # Separate features and labels
-X_train = train_data.drop(columns=["target"])  # Replace 'target' with actual label column name
+X_train = train_data.drop(columns=["target"])
 y_train = train_data["target"]
 X_test = test_data.drop(columns=["target"])
 y_test = test_data["target"]
