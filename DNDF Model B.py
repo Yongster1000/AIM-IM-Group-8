@@ -36,7 +36,7 @@ test_ds = DataLoader(TensorDataset(X_test_tensor, y_test_tensor), batch_size=32)
 class NeuralFeatureExtractor(nn.Module):
     def __init__(self, input_dim, hidden_dim=64):
         super(NeuralFeatureExtractor, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)         #can add more layers if necessary
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         
     def forward(self, x):
@@ -53,15 +53,15 @@ class DNDFTree(nn.Module):
         self.num_leaf_nodes = 2 ** depth
 
         # Differentiable decision nodes
-        self.decision_layer = nn.Linear(input_dim, self.num_leaf_nodes)
+        self.decision_layer = nn.Linear(input_dim, self.num_leaf_nodes)   #linear nn layer, to be passed through a activation function (ReLu in this case) to become a probability so as to make soft splits
         
         # Trainable leaf distributions
         self.leaf_distributions = nn.Parameter(torch.rand(self.num_leaf_nodes, num_classes))
         
     def forward(self, x):
         # Soft decision routing at each node
-        decision_logits = self.decision_layer(x)
-        decision_probs = torch.sigmoid(decision_logits)
+        decision_logits = self.decision_layer(x) #linear NN layer, data type = Tensor, shape: [no. of samples in batch, no. of leaf nodes], obtained by applying linear transformation on embedded values from NN layer, represents likelihood of making a certain decision at decision node
+        decision_probs = torch.sigmoid(decision_logits) # logits pass through functions to get a probability, used for soft splits, data type = Tensor, shape: [no. of samples in batch, no. of leaf nodes], values converted to probabilities
         
         # Initialize route probabilities (mu) to start at 1 for each sample
         mu = torch.ones_like(decision_probs[:, :1])  # Start with probability 1
@@ -89,10 +89,10 @@ class DNDF(nn.Module):
         self.num_classes = num_classes
         
         # Neural network feature extractor
-        self.feature_extractor = NeuralFeatureExtractor(input_dim, hidden_dim)
+        self.feature_extractor = NeuralFeatureExtractor(input_dim, hidden_dim)  # N embedding laer
         
         # Forest of trees
-        self.trees = nn.ModuleList([DNDFTree(tree_depth, hidden_dim, num_classes) for _ in range(num_trees)])
+        self.trees = nn.ModuleList([DNDFTree(tree_depth, hidden_dim, num_classes) for _ in range(num_trees)])   #Decision Trees (forest) backbone
         
     def forward(self, x):
         # Pass data through the feature extractor
@@ -147,10 +147,18 @@ def evaluate(model, test_loader):
             correct += (predicted == batch_y).sum().item()
             all_preds.extend(predicted.tolist())
     accuracy = correct / total
-    print(f"Test Accuracy: {accuracy * 100:.2f}%")
+    print(f"Test Accuracy: {accuracy * 100:.2f}%") #91.30%
     return all_preds
 
 # Evaluate the model
 y_pred = evaluate(model, test_ds)
 print(classification_report(y_test, y_pred))
 
+'''               precision  recall    f1-score   support
+
+           0       0.91      1.00      0.95       451
+           1       0.00      0.00      0.00        43
+
+accuracy                               0.91       494
+macro avg          0.46      0.50      0.48       494
+weighted avg       0.83      0.91      0.87       494'''
