@@ -133,32 +133,64 @@ def train(model, train_loader, criterion, optimizer, epochs=10):
 # Training the model
 train(model, train_ds, criterion, optimizer, epochs=10)
 
-# Evaluation function
+from sklearn.metrics import precision_recall_curve, auc, roc_auc_score, accuracy_score, recall_score, f1_score
+import numpy as np
+import torch
+
+def compute_auprc(y_true, y_probs):
+    precision, recall, _ = precision_recall_curve(y_true, y_probs[:, 1], pos_label=1)
+    auprc = auc(recall, precision)
+    return auprc
+
+def compute_auroc(y_true, y_probs):
+    return roc_auc_score(y_true, y_probs[:, 1])  # Assuming y_probs[:, 1] for the positive class in binary classification
+
+def compute_accuracy(y_true, y_pred):
+    return accuracy_score(y_true, y_pred)
+
+def compute_recall(y_true, y_pred):
+    return recall_score(y_true, y_pred, average="weighted")  # Use "weighted" for handling class imbalances in multi-class
+
+def compute_f1(y_true, y_pred):
+    return f1_score(y_true, y_pred, average="weighted")  # Use "weighted" to handle class imbalances
+
+
 def evaluate(model, test_loader):
     model.eval()
-    correct = 0
-    total = 0
-    all_preds = []
+    y_true = []
+    y_pred = []
+    y_probs = []
+    
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
             output = model(batch_x)
+            y_true.extend(batch_y.tolist())
+            
+            # Get predicted class (highest probability)
             _, predicted = torch.max(output, 1)
-            total += batch_y.size(0)
-            correct += (predicted == batch_y).sum().item()
-            all_preds.extend(predicted.tolist())
-    accuracy = correct / total
-    print(f"Test Accuracy: {accuracy * 100:.2f}%") #91.30%
-    return all_preds
+            y_pred.extend(predicted.tolist())
+            
+            # Get predicted probabilities
+            y_probs.extend(torch.softmax(output, dim=1).tolist())  # For AUROC and AUPRC
 
-# Evaluate the model
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    y_probs = np.array(y_probs)
+
+    # Calculate metrics
+    auprc = compute_auprc(y_true, y_probs)
+    auroc = compute_auroc(y_true, y_probs)
+    accuracy = compute_accuracy(y_true, y_pred)
+    recall = compute_recall(y_true, y_pred)
+    f1 = compute_f1(y_true, y_pred)
+
+    # Print or return metrics
+    print(f"AUPRC: {auprc:.4f}")
+    print(f"AUROC: {auroc:.4f}")
+    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1 Score: {f1:.4f}")
+
+    return auprc, auroc, accuracy, recall, f1
+
 y_pred = evaluate(model, test_ds)
-print(classification_report(y_test, y_pred))
-
-'''               precision  recall    f1-score   support
-
-           0       0.91      1.00      0.95       451
-           1       0.00      0.00      0.00        43
-
-accuracy                               0.91       494
-macro avg          0.46      0.50      0.48       494
-weighted avg       0.83      0.91      0.87       494'''
