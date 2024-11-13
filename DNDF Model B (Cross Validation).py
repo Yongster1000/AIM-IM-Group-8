@@ -22,7 +22,7 @@ random.seed(0)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load and prepare data
-data = pd.read_csv("Data/train_standard.csv")
+data = pd.read_csv("Data/train_minmax.csv")
 
 # Separate features and labels
 X = data.drop(columns=["target"]).values
@@ -268,11 +268,35 @@ print(f"Average Recall: {np.mean(recall_scores):.4f} ± {np.std(recall_scores):.
 print(f"Average F1 Score: {np.mean(f1_scores):.4f} ± {np.std(f1_scores):.4f}")
 
 '''Results 11/13
-Cross-Validation Results:
+Cross-Validation Results (standard, no methylation):
 Average AUPRC: 0.3190 ± 0.0573
 Average AUROC: 0.8226 ± 0.0262
 Average Accuracy: 71.39% ± 3.25%
 Average Precision: 0.1917 ± 0.0223
 Average Recall: 0.7750 ± 0.0538
 Average F1 Score: 0.3068 ± 0.0308
+
+Cross validation results (standard, methylation):
+AUPRC: 0.3199
+AUROC: 0.8275
+Average Accuracy: 70.33% ± 2.68%
+Average Precision: 0.1861 ± 0.0179
+Average Recall: 0.7812 ± 0.0280
+Average F1 Score: 0.3004 ± 0.0250
+
+Cross validation results (minmax, no methylation)
+Average AUPRC: 0.3148 ± 0.0499
+Average AUROC: 0.8169 ± 0.0273
+Average Accuracy: 72.46% ± 1.83%
+Average Precision: 0.1937 ± 0.0116
+Average Recall: 0.7562 ± 0.0415
+Average F1 Score: 0.3083 ± 0.0163
+
+Cross validation results (minmax, methylation)
+Average AUPRC: 0.3199 ± 0.0885
+Average AUROC: 0.8275 ± 0.0333
+Average Accuracy: 70.33% ± 2.68%
+Average Precision: 0.1861 ± 0.0179
+Average Recall: 0.7812 ± 0.0280
+Average F1 Score: 0.3004 ± 0.0250
 '''
