@@ -22,7 +22,7 @@ random.seed(0)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load and prepare data
-data = pd.read_csv("Data/train_minmax.csv")
+data = pd.read_csv("Data/train_standard_methyl.csv")
 
 # Separate features and labels
 X = data.drop(columns=["target"]).values

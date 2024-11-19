@@ -1,4 +1,4 @@
-There will be multiple models that are built from the DNDF framework. The DNDF framework is as such:
+The DNDF framework is as such:
 
 1) Data Input → The data enters the neural network layers, where initial feature transformations and embeddings are created.
 2) Neural Network Embedding → The transformed data is passed to each tree in the forest, creating a refined, lower-dimensional feature embedding.
