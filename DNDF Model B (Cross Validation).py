@@ -22,7 +22,7 @@ random.seed(0)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load and prepare data
-data = pd.read_csv("Data/train_standard_methyl.csv")
+data = pd.read_csv("Data/train_minmax_methyl2.csv")
 
 # Separate features and labels
 X = data.drop(columns=["target"]).values
@@ -277,8 +277,8 @@ Average Recall: 0.7750 ± 0.0538
 Average F1 Score: 0.3068 ± 0.0308
 
 Cross validation results (standard, methylation):
-AUPRC: 0.3199
-AUROC: 0.8275
+Average AUPRC: 0.3199 ± 0.0885
+Average AUROC: 0.8275 ± 0.0333
 Average Accuracy: 70.33% ± 2.68%
 Average Precision: 0.1861 ± 0.0179
 Average Recall: 0.7812 ± 0.0280
@@ -293,7 +293,7 @@ Average Recall: 0.7562 ± 0.0415
 Average F1 Score: 0.3083 ± 0.0163
 
 Cross validation results (minmax, methylation)
-Average AUPRC: 0.3199 ± 0.0885
+Average AUPRC: 0.31992
 Average AUROC: 0.8275 ± 0.0333
 Average Accuracy: 70.33% ± 2.68%
 Average Precision: 0.1861 ± 0.0179
