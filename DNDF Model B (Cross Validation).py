@@ -30,9 +30,10 @@ y = data["target"].values
 
 # Number of folds for cross-validation
 n_splits = 5
-
+for i in range(0,29):    #adjust xdd
+    seed = i
 # Initialize StratifiedKFold
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
 # Arrays to store performance metrics
 auprc_scores = []
