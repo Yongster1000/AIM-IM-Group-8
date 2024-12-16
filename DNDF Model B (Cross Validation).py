@@ -12,6 +12,7 @@ from sklearn.metrics import (
     recall_score, precision_score, f1_score, confusion_matrix
 )
 import random
+import joblib
 
 # Set seeds for reproducibility
 torch.manual_seed(0)
@@ -23,6 +24,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load and prepare data
 data = pd.read_csv("Data/revised_clinical_with_new_methylation_data.csv")
+
+def preprocess_data(X):
+    # Handle outliers by clipping to the 1st and 99th percentiles
+    lower_bound = np.percentile(X, 1, axis=0)
+    upper_bound = np.percentile(X, 99, axis=0)
+    X = np.clip(X, lower_bound, upper_bound)
+    
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    return X_scaled, scaler
 
 # Separate features and labels
 X = data.drop(columns=["target"]).values
@@ -129,49 +142,50 @@ def train_model(model, train_loader, criterion, optimizer, device, epochs=10):
 
 def evaluate_model(model, test_loader, device):
     model.eval()
-    y_true = []
-    y_pred = []
-    y_probs = []
-    
+    y_true, y_pred, y_probs = [], [], []
+
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             output = model(batch_x)
             probs = torch.softmax(output, dim=1)
             _, predicted = torch.max(output, 1)
-            
+
             y_true.extend(batch_y.cpu().numpy())
             y_pred.extend(predicted.cpu().numpy())
             y_probs.extend(probs[:, 1].cpu().numpy())
-    
+
+    # Convert results to arrays
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     y_probs = np.array(y_probs)
-    
+
+    # Compute metrics
     precision, recall, _ = precision_recall_curve(y_true, y_probs)
     auprc = auc(recall, precision)
     auroc = roc_auc_score(y_true, y_probs)
     accuracy = accuracy_score(y_true, y_pred)
-    recall_score_value = recall_score(y_true, y_pred)
-    precision_score_value = precision_score(y_true, y_pred)
+    recall_value = recall_score(y_true, y_pred, zero_division=0)
+    precision_value = precision_score(y_true, y_pred, zero_division=0)
     f1 = f1_score(y_true, y_pred)
     cm = confusion_matrix(y_true, y_pred)
-    
+
     print(f"AUPRC: {auprc:.4f}")
     print(f"AUROC: {auroc:.4f}")
     print(f"Accuracy: {accuracy * 100:.2f}%")
-    print(f"Precision: {precision_score_value:.4f}")
-    print(f"Recall: {recall_score_value:.4f}")
+    print(f"Precision: {precision_value:.4f}")
+    print(f"Recall: {recall_value:.4f}")
     print(f"F1 Score: {f1:.4f}")
     print("Confusion Matrix:")
     print(cm)
-    
-    return auprc, auroc, accuracy, recall_score_value, precision_score_value, f1
 
+    return auprc, auroc, accuracy, recall_value, precision_value, f1
 # ==========================
 # Cross-validation + Repetitions
 # ==========================
 n_splits = 5
+batch_size = 32
+
 
 # Arrays to store overall metrics across all 30 runs
 results_list = []
@@ -181,65 +195,53 @@ for i in range(30):
     print(f"\n=== Run {i+1}/30 with seed {seed} ===")
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     
-    # Arrays to store performance metrics for each 5-fold cycle (one run)
-    auprc_scores = []
-    auroc_scores = []
-    accuracy_scores = []
-    recall_scores = []
-    precision_scores = []
-    f1_scores = []
-
-    # Perform the 5-fold cross-validation
-    fold = 0
-    for train_index, test_index in skf.split(X, y):
-        fold += 1
+    for fold, (train_index, test_index) in enumerate(skf.split(X, y), start=1):
         print(f"\nFold {fold}")
-        # Split the data for this fold
+
+        # Split the data
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        
-        # Standardize features based on training data
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-        
+
+        # Apply preprocessing
+        X_train, scaler = preprocess_data(X_train)
+        X_test = scaler.transform(X_test)
+        joblib.dump(scaler, f'scaler_run_{i}_fold_{fold}.pkl')  # Save scaler
+
         # Convert to tensors
-        X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
+        X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
         y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-        X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
+        X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
         y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-        
-        # Create DataLoaders
-        train_ds = DataLoader(TensorDataset(X_train_tensor, y_train_tensor), batch_size=32, shuffle=True)
-        test_ds = DataLoader(TensorDataset(X_test_tensor, y_test_tensor), batch_size=32)
-        
+
         # Compute class weights
-        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
+        class_weights = compute_class_weight(
+            class_weight='balanced', classes=np.unique(y_train), y=y_train
+        )
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
-        
+
+        # Create DataLoaders
+        train_ds = DataLoader(TensorDataset(X_train_tensor, y_train_tensor), batch_size=batch_size, shuffle=True)
+        test_ds = DataLoader(TensorDataset(X_test_tensor, y_test_tensor), batch_size=batch_size)
+
         # Model parameters
         input_dim = X_train.shape[1]
         hidden_dim = 64
         num_classes = len(np.unique(y_train))
         num_trees = 5
         tree_depth = 3
-        
-        # Initialize the model
+
+        # Model setup
         model = DNDF(input_dim, hidden_dim, num_classes, num_trees, tree_depth).to(device)
-        
-        # Define loss and optimizer
         criterion = nn.CrossEntropyLoss(weight=class_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-        
-        # Train the model
+
+        # Train and evaluate
         train_model(model, train_ds, criterion, optimizer, device, epochs=50)
-        
-        # Evaluate the model
         auprc, auroc, accuracy, recall_value, precision_value, f1 = evaluate_model(model, test_ds, device)
-        
-        # Store the fold metrics
+
+        # Store results
         results_list.append({
-            'run': i+1,
+            'run': i + 1,
             'fold': fold,
             'AUPRC': auprc,
             'AUROC': auroc,
@@ -248,6 +250,7 @@ for i in range(30):
             'Recall': recall_value,
             'F1_Score': f1
         })
+
 
 # After all runs and folds have been recorded
 results_df = pd.DataFrame(results_list)
