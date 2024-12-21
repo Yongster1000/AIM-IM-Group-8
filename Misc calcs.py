@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # Read the CSV file
-df = pd.read_csv('Holistic_results.csv')
+df = pd.read_csv('holistic_results.csv')
 
 # Calculate the median for the chosen metric, AUPRC
 median_auprc = df['AUPRC'].median()
